@@ -1,0 +1,2 @@
+1. 텍스트 파일의 Line Number를 벗어난 숫자를 입력했을 때, 범위를 벗어난 숫자임을 알려주고 Line Number 다시 받기
+2. Line number, \q가 아닌 그 외의 문자를 입력했을 때 Invaild Command 출력하고 Line Number 다시 받기
