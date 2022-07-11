@@ -55,11 +55,11 @@ int view_file(FILE* fp)
 
 void print_line(FILE* fp, int total_line)
 {
-	int line = 1;
 	char arr[MaxCount];
-	char* get_string;
+	char* get_string = NULL;
 	char answer[MaxLen] = "";
-	int convert_answer;
+	int convert_answer = 0;
+	int str_size = 0;
 
 	while (1)
 	{
@@ -80,24 +80,32 @@ void print_line(FILE* fp, int total_line)
 
 		if (convert_answer > 0 && convert_answer <= total_line)
 		{
+			int line = 1;
 			rewind(fp);
+			
 			while (1)
 			{
 				get_string = fgets(arr, MaxCount, fp);
 
 				if (line++ == convert_answer)
 				{
-					printf("   %s", get_string);
+					if (line - 1 == total_line)
+					{
+						str_size = strlen(get_string);
+						arr[str_size] = '\n';
+						arr[str_size + 1] = '\0';
+					}
+
+					printf("   %s", arr);
 					break;
 				}
 			}
 		}
 
-		else if (convert_answer < 0 || convert_answer > total_line)
+		else if (convert_answer < 0 || convert_answer > total_line || convert_answer == 0 && (isdigit(convert_answer)) != 0)
 		{
 			printf("\n   Out of range value.\n");
 			printf("   Enter the value between 1 and %d.\n", total_line);
-			continue;
 		}
 
 		else
