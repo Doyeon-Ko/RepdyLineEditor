@@ -7,6 +7,7 @@
 
 int view_file(FILE* fp);
 void print_line(FILE* fp, int total_line);
+int read_line(char* buffer, int num, FILE* fp);
 
 int main(int argc, char* argv[])   
 {
@@ -42,11 +43,12 @@ int main(int argc, char* argv[])
 
 int view_file(FILE* fp)
 {
-	char buffer[MaxCount];
+	char* read = NULL;
+	char buffer[MaxCount] = "";
 	int line_num = 1;
-	while (fgets(buffer, MaxCount, fp) != NULL)
+	while (read_line(buffer, MaxCount, fp) != NULL)
 	{
-		printf("%5d %s", line_num++, buffer);
+		printf("%5d %s\n", line_num++, buffer);
 	}
 	printf("\n");
 
@@ -85,18 +87,11 @@ void print_line(FILE* fp, int total_line)
 			
 			while (1)
 			{
-				get_string = fgets(arr, MaxCount, fp);
+				read_line(arr, MaxCount, fp);
 
 				if (line++ == convert_answer)
 				{
-					if (line - 1 == total_line)
-					{
-						str_size = strlen(get_string);
-						arr[str_size] = '\n';
-						arr[str_size + 1] = '\0';
-					}
-
-					printf("   %s", arr);
+					printf("   %s\n", arr);
 					break;
 				}
 			}
@@ -112,3 +107,21 @@ void print_line(FILE* fp, int total_line)
 			printf("   Invalid Command.\n");
 	}
 }
+
+int read_line(char* buffer, int num, FILE* fp)
+{
+	int str_size;
+
+	if (fgets(buffer, num, fp) != NULL)
+	{
+		str_size = strlen(buffer);
+		if (buffer[str_size - 1] == '\n')
+			buffer[str_size - 1] = '`';
+		return str_size;
+	}
+
+	return NULL;
+}
+
+
+
