@@ -8,6 +8,7 @@
 int view_file(FILE* fp);
 void print_line(FILE* fp, int total_line);
 int read_line(char* buffer, int num, FILE* fp);
+int read_line2(char* buffer, int size, FILE* fp);
 
 int main(int argc, char* argv[])   
 {
@@ -46,10 +47,19 @@ int view_file(FILE* fp)
 	char* read = NULL;
 	char buffer[MaxCount] = "";
 	int line_num = 1;
-	while (read_line(buffer, MaxCount, fp) != NULL)
+	int fsize; //파일 크기
+
+	fseek(fp, 0, SEEK_END);
+	fsize = ftell(fp);
+	rewind(fp);
+
+	while(1)	//while (read_line(buffer, MaxCount, fp) != NULL)
 	{
-		printf("%5d %s\n", line_num++, buffer);
-	}
+		if (read_line2(buffer, sizeof(char), fp) == NULL)
+			break;
+		else
+			printf("%5d %s\n", line_num++, buffer);
+	};
 	printf("\n");
 
 	return (line_num - 1);
@@ -87,8 +97,7 @@ void print_line(FILE* fp, int total_line)
 			
 			while (1)
 			{
-				read_line(arr, MaxCount, fp);
-
+				read_line2(arr, sizeof(char), fp); //read_line(arr, MaxCount, fp);
 				if (line++ == convert_answer)
 				{
 					printf("   %s\n", arr);
@@ -108,20 +117,50 @@ void print_line(FILE* fp, int total_line)
 	}
 }
 
-int read_line(char* buffer, int num, FILE* fp)
+/*int read_line(char* buffer, int num, FILE* fp)
 {
-	int str_size;
+	int str_len;
 
 	if (fgets(buffer, num, fp) != NULL)
 	{
-		str_size = strlen(buffer);
-		if (buffer[str_size - 1] == '\n')
-			buffer[str_size - 1] = '`';
-		return str_size;
+		str_len = strlen(buffer);
+		if (buffer[str_len - 1] == '\n')
+			buffer[str_len - 1] = '`';
+		return str_len;
 	}
 
 	return NULL;
+}*/
+
+//Use read_line2 ftn instead of read_line ftn by replacing fgets to the fread ftn.
+int read_line2(char* buffer, int size, FILE* fp)
+{
+	int result;
+	int i = 0;
+	int k = 0;
+
+	while (buffer[k] != '\0')
+	{
+		buffer[k++] = '\0';
+	}
+
+	while (1)
+	{
+		result = fread(&(buffer[i]), size, size, fp); //result is the length of characters that the fread ftn succeed to read.
+
+		if (buffer[i++] == '\n')
+		{
+			buffer[i - 1] = '`';
+			return result;
+		}
+
+		else
+		{
+			if (result == 0 || result == EOF) //the case that fail to read the file or the file pointer points to the end of file.
+				return 0;
+			else
+				continue;
+		}
+	}
 }
-
-
 
