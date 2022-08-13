@@ -1,3 +1,5 @@
+#pragma warning(disable: 4996) 
+
 #include <stdio.h>
 #include <ctype.h> 
 #include <stdlib.h>
