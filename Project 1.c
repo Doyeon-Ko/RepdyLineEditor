@@ -8,12 +8,13 @@
 int view_file(FILE* fp);
 void print_line(FILE* fp, int total_line);
 int read_line(char* buffer, int num, FILE* fp);
-int read_line2(char* buffer, int size, FILE* fp);
+int read_line2(char* buffer, int max, FILE* fp);
 
 int main(int argc, char* argv[])   
 {
 	FILE* file;
 	char line_num[MaxLen] = "";
+
 	int total_line;
 	int convert_linenum;
 
@@ -44,19 +45,23 @@ int main(int argc, char* argv[])
 
 int view_file(FILE* fp)
 {
-	char* read = NULL;
-	char buffer[MaxCount] = "";
+	char buffer[MaxCount] = { 'a', 'b', 'c', NULL, 'e', 'f'}; //in the case that the buffer(memory) is not initialized with 0.
+
 	int line_num = 1;
-	int fsize; //파일 크기
 
-	fseek(fp, 0, SEEK_END);
-	fsize = ftell(fp);
-	rewind(fp);
-
-	while(1)	//while (read_line(buffer, MaxCount, fp) != NULL)
+	while(line_num)	//while (read_line(buffer, MaxCount, fp) != NULL)
 	{
-		if (read_line2(buffer, sizeof(char), fp) == NULL)
+		if (read_line2(buffer, MaxCount, fp) == NULL)
+		{
+			if (line_num == 1)
+			{
+				printf("\n   Empty File.\n");
+				exit(1);
+			}
+
 			break;
+		}
+
 		else
 			printf("%5d %s\n", line_num++, buffer);
 	};
@@ -67,7 +72,7 @@ int view_file(FILE* fp)
 
 void print_line(FILE* fp, int total_line)
 {
-	char arr[MaxCount];
+	char arr[MaxCount] = { 'a', 'b', 'c', NULL, 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', NULL, 'p', 'T', 'a', 'e', 'y', 'e', 'o', 'n', 'J', 'i', '\n', 'i', 'n'}; //In the case that the arr(memory) is not initialized with 0
 	char* get_string = NULL;
 	char answer[MaxLen] = "";
 	int convert_answer = 0;
@@ -97,7 +102,7 @@ void print_line(FILE* fp, int total_line)
 			
 			while (1)
 			{
-				read_line2(arr, sizeof(char), fp); //read_line(arr, MaxCount, fp);
+				read_line2(arr, MaxCount, fp); //read_line(arr, MaxCount, fp);
 				if (line++ == convert_answer)
 				{
 					printf("   %s\n", arr);
@@ -117,7 +122,7 @@ void print_line(FILE* fp, int total_line)
 	}
 }
 
-/*int read_line(char* buffer, int num, FILE* fp)
+int read_line(char* buffer, int num, FILE* fp)
 {
 	int str_len;
 
@@ -130,37 +135,34 @@ void print_line(FILE* fp, int total_line)
 	}
 
 	return NULL;
-}*/
+}
 
 //Use read_line2 ftn instead of read_line ftn by replacing fgets to the fread ftn.
-int read_line2(char* buffer, int size, FILE* fp)
+int read_line2(char* buffer, int max, FILE* fp)
 {
 	int result;
 	int i = 0;
-	int k = 0;
 
-	while (buffer[k] != '\0')
+	char dat = 0;
+
+	while (i < max - 1)
 	{
-		buffer[k++] = '\0';
-	}
+		result = fread(&dat, sizeof(dat), 1, fp); //result is the length of characters that the fread ftn succeed to read.
 
-	while (1)
-	{
-		result = fread(&(buffer[i]), size, size, fp); //result is the length of characters that the fread ftn succeed to read.
-
-		if (buffer[i++] == '\n')
+		if (result == 0 || result == EOF) //the case that fail to read the file or the file pointer points to the end of file.
 		{
-			buffer[i - 1] = '`';
-			return result;
+			buffer[i] = 0;
+			return i;
 		}
 
-		else
+		if (dat == '\n')
 		{
-			if (result == 0 || result == EOF) //the case that fail to read the file or the file pointer points to the end of file.
-				return 0;
-			else
-				continue;
+			buffer[i] = '`';
+			buffer[i + 1] = 0;
+			return i + 1;
 		}
+
+		buffer[i++] = dat;
 	}
 }
 
