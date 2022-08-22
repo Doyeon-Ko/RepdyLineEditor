@@ -4,21 +4,45 @@
 #include <ctype.h> 
 #include <stdlib.h>
 #include <string.h>
-#define MaxCount 1000
-#define MaxLen 500
+#include <conio.h>
 
-int view_file(FILE* fp);
-void print_line(FILE* fp, int total_line);
-int read_line(char* buffer, int num, FILE* fp);
-int read_line2(char* buffer, int max, FILE* fp);
+#define MaxLenofLine 10000
+#define Max 1000
+#define MaxLineNum 1000
+#define UP 72
+#define DOWN 80
+#define ADD 65
+#define DEL 68
+#define EDIT 69
+#define INSERT 73
+
+typedef struct command_box
+{
+	char work;
+	char input[50];
+}COMMAND;
+
+typedef struct file_info
+{
+	int current_line;
+	int total_line;
+	char* text[1000];
+}INFO;
+
+int view_file(FILE* fp, INFO* fi);
+void print_line(int command_line, INFO* fi);
+//int read_line(char* buffer, int num, FILE* fp);
+int myFgets(char* buffer, int max, FILE* fp);
+int get_command(COMMAND* c);
+int move_line(const int num, const char sign, INFO* fi);
 
 int main(int argc, char* argv[])   
 {
 	FILE* file;
-	char line_num[MaxLen] = "";
+	COMMAND c;
+	INFO fi;
 
-	int total_line;
-	int convert_linenum;
+	int convert_input;
 
 	if (argc < 2)
 	{
@@ -29,102 +53,126 @@ int main(int argc, char* argv[])
 
 	else
 	{
-		if (file = fopen(argv[1], "r+"))
-		{
-			total_line = view_file(file);
-			print_line(file, total_line);
-		}
-		
-		else if (file == NULL)
+		file = fopen(argv[1], "r+");
+
+		if (file == NULL)
 		{
 			printf("File does not exist.");
 			return 0;
 		}
-	}
-
-	return 0;
-}
-
-int view_file(FILE* fp)
-{
-	char buffer[MaxCount] = { 'a', 'b', 'c', NULL, 'e', 'f'}; //in the case that the buffer(memory) is not initialized with 0.
-
-	int line_num = 1;
-
-	while(line_num)	//while (read_line(buffer, MaxCount, fp) != NULL)
-	{
-		if (read_line2(buffer, MaxCount, fp) == NULL)
-		{
-			if (line_num == 1)
-			{
-				printf("\n   Empty File.\n");
-				exit(1);
-			}
-
-			break;
-		}
-
-		else
-			printf("%5d %s\n", line_num++, buffer);
-	};
-	printf("\n");
-
-	return (line_num - 1);
-}
-
-void print_line(FILE* fp, int total_line)
-{
-	char arr[MaxCount] = { 'a', 'b', 'c', NULL, 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', NULL, 'p', 'T', 'a', 'e', 'y', 'e', 'o', 'n', 'J', 'i', '\n', 'i', 'n'}; //In the case that the arr(memory) is not initialized with 0
-	char* get_string = NULL;
-	char answer[MaxLen] = "";
-	int convert_answer = 0;
-	int str_size = 0;
-
-	while (1)
-	{
-		printf("\n   Line Number : ");
-		scanf("%s", answer);
-
-		if (answer[0] == '\\' && strlen(answer) == 2)
-		{
-			if (answer[1] == 'q' || answer[1] == 'Q')
-			{
-				printf("   Quit Line Editior.\n");
-				fclose(fp);
-				exit(1);
-			}
-		}
-
-		convert_answer = atoi(answer);
-
-		if (convert_answer > 0 && convert_answer <= total_line)
-		{
-			int line = 1;
-			rewind(fp);
 			
-			while (1)
+		else
+		{
+			fi.total_line = view_file(file, &fi);
+			fi.current_line = fi.total_line - 1;
+			print_line(fi.total_line, &fi);
+
+			while (get_command(&c))
 			{
-				read_line2(arr, MaxCount, fp); //read_line(arr, MaxCount, fp);
-				if (line++ == convert_answer)
+				printf("\n");
+				switch (c.work)
 				{
-					printf("   %s\n", arr);
-					break;
+					case'M':
+					{
+						convert_input = atoi(c.input);
+						move_line(convert_input, c.input[0], &fi);
+						//printf("\n");
+						//print_line(fi.current_line + 1, &fi);
+						break;
+					}
 				}
 			}
 		}
+	}
+	fclose(file);
+	return 0;
+}
 
-		else if (convert_answer < 0 || convert_answer > total_line || convert_answer == 0 && (isdigit(convert_answer)) != 0)
+int view_file(FILE* fp, INFO* fi)
+{
+	char* buffer = NULL;
+	char* second_buffer = NULL;
+
+	int line_num = 1;
+	int ptr_num = 0;
+	int text_len = 0;
+	
+	while(line_num)	//while (read_line(buffer, MaxCount, fp) != NULL)
+	{
+		buffer = (char*)malloc(MaxLenofLine * sizeof(char));
+
+		if (!buffer)
 		{
-			printf("\n   Out of range value.\n");
-			printf("   Enter the value between 1 and %d.\n", total_line);
+			printf("Memory allocation failed.");
+			exit(1);
 		}
 
 		else
-			printf("   Invalid Command.\n");
-	}
+		{
+			if (myFgets(buffer, MaxLenofLine, fp) == NULL)
+			{
+				if (line_num == 1)
+				{
+					printf("\n   Empty File.\n");
+					exit(1);
+				}
+
+				else
+				{
+					//printf("\n%5d: %s\n", line_num - 1, ptr_arr[ptr_num - 1]);
+					break;
+				}
+			}
+
+			else
+			{
+				text_len = strlen(buffer);
+				second_buffer = (char*)realloc(buffer, (sizeof(char) * text_len) + 1);
+
+				if (second_buffer == NULL)
+				{
+					printf("Memory reallocation failed.");
+					free(buffer);
+					exit(1);
+				}
+
+				else 
+				{
+					fi->text[ptr_num] = second_buffer;
+					printf("%5d %s\n", line_num++, fi->text[ptr_num++]);
+				}
+			}
+		}
+	};
+	rewind(fp);
+	printf("\n");
+
+	fi->total_line = line_num - 1;
+
+	return line_num - 1;
 }
 
-int read_line(char* buffer, int num, FILE* fp)
+void print_line(const int command_line, INFO* fi)
+{
+	char arr[Max] = "";
+	int str_size = 0;
+
+	if (command_line > 0 && command_line <= fi->total_line)
+	{
+		printf("%5d:%s\n", command_line, fi->text[command_line - 1]);
+	}
+
+	else if (command_line < 0 || command_line > fi->total_line || command_line == 0 && (isdigit(command_line)) != 0)
+	{
+		printf("\n   Out of range value.\n");
+		printf("   Enter the value between 1 and %d.\n", fi->total_line);
+	}
+
+	else
+		printf("   Invalid Command.\n");
+}
+
+/*int read_line(char* buffer, int num, FILE* fp)
 {
 	int str_len;
 
@@ -137,10 +185,10 @@ int read_line(char* buffer, int num, FILE* fp)
 	}
 
 	return NULL;
-}
+}*/
 
-//Use read_line2 ftn instead of read_line ftn by replacing fgets to the fread ftn.
-int read_line2(char* buffer, int max, FILE* fp)
+//Use myFgets ftn instead of read_line ftn by replacing fgets to the fread ftn.
+int myFgets(char* buffer, int max, FILE* fp)
 {
 	int result;
 	int i = 0;
@@ -166,5 +214,206 @@ int read_line2(char* buffer, int max, FILE* fp)
 
 		buffer[i++] = dat;
 	}
+	return 1;
+}
+
+int get_command(COMMAND* c)
+{
+	int i = 1;
+	int k;
+
+	char answer[50];
+	unsigned char ch;
+	char sc;
+
+	printf("\n   > ");
+	
+	ch = _getche();
+
+	if (ch == 224) //If the user entered arrow keys
+	{
+		sc = _getche();
+		switch (sc)
+		{
+			case 72: //Up arrow key
+			{
+				c->work = 'M';
+				strcpy(c->input, "-1");
+				break;
+			}
+
+			case 80: //Down arrow key
+			{
+				c->work = 'M';
+				strcpy(c->input, "+1");
+				break;
+			}
+
+			case 73: //Page Up
+			{
+				c->work = 'M';
+				strcpy(c->input, "-25");
+				break;
+			}
+
+			case 81: //Page Down
+			{
+				c->work = 'M';
+				strcpy(c->input, "+25");
+				break;
+			}
+
+			default:
+				break;
+		}
+		return 1;
+	}
+
+	else if (isdigit(ch))
+	{
+		answer[0] = ch;
+		while (1)
+		{
+			sc = _getche();
+			if (sc != 13)
+				answer[i++] = sc;
+			else
+			{
+				answer[i] = '\0';
+				break;
+			}
+		}
+
+		c->work = 'M';
+		c->input[0] = '0';
+
+		for (k = 1; k < i + 1; k++)
+		{
+			c->input[k] = answer[k - 1];
+		}
+		c->input[k] = '\0';
+		return 1;
+	}
+
+	else if (ch == 81 || ch == 113)
+	{
+		printf("\n   Quit Line Editior.\n");
+		return 0;
+	}
+
+	else if (isalpha(ch)) //사용자가 'A', 'E', 'D', 'I', 'a', 'e', 'd', 'i' 중에 한 명령어를 입력했을 경우
+	{
+		if (islower(ch))
+			ch = toupper(ch);
+
+		switch(ch)
+		{
+			case ADD:
+				c->work = 'A';
+			case DEL:
+				c->work = 'D';
+			case EDIT:
+				c->work = 'E';
+			case INSERT:
+				c->work = 'I';
+			default:
+				break;
+		}
+		return 1;
+	}
+	printf("\n");
+}
+
+int move_line(const int num, const char sign, INFO* fi)
+{
+	int tmp;
+	int i, k;
+
+	switch (sign)
+	{
+		case'0': //num 번째 줄로 이동
+		{
+			if (0 < num && num <= fi->total_line)
+			{
+				fi->current_line = num - 1;
+				print_line(num, fi);
+				break;
+			}
+			else
+			{
+				printf("\n   Out of range value.\n");
+				printf("   Enter the value between 1 and %d.\n", fi->total_line);
+				break;
+			}
+		}
+
+		case'-': //(current line - num) 번째 줄로 이동
+		{
+			if (num == -1) //Up Arrow Key
+			{
+				if (0 < (fi->current_line) + 1 + num)
+				{
+					fi->current_line = fi->current_line - 1;
+					print_line(fi->current_line + 1, fi);
+					break;
+				}
+			}
+					
+			else if(num == -25) //Page Up Key
+			{
+				tmp = fi->current_line;
+				fi->current_line = fi->current_line - 24;
+				if (fi->current_line + 1 >= 0)
+				{
+					for (i = fi->current_line + 1; i <= tmp + 1; i++)
+						print_line(i, fi);
+				}
+				else
+				{
+					fi->current_line = 0;
+					for (k = 1; k <= tmp + 1; k++)
+					print_line(k, fi);
+				}
+				break;
+			}
+		}
+		printf("   This is the end of file.\n");
+		break;
+
+		case'+': //(current line + num) 번째 줄로 이동
+		{
+			if (num == 1) //Down Arrow Key
+			{
+				if (fi->current_line + 1 + num <= fi->total_line)
+				{
+					fi->current_line = fi->current_line + 1;
+					print_line(fi->current_line + 1, fi);
+					break;
+				}
+			}
+				
+			else if (num == 25) //Page Down Key
+			{
+				tmp = fi->current_line;
+				fi->current_line = fi->current_line + 24;
+				if (fi->current_line + 1 < fi->total_line)
+				{
+					for (i = tmp + 1; i <= fi->current_line + 1; i++)
+						print_line(i, fi);
+				}
+
+				else if (fi->current_line + 1 > fi->total_line)
+				{
+					fi->current_line = fi->total_line - 1;
+					for (k = tmp + 1; k <= fi->total_line; k++)
+						print_line(k, fi);
+				}
+				break;
+			}
+		}
+		printf("   This is the end of file.\n");
+		break;
+	}
+	return 1;
 }
 
