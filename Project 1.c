@@ -11,10 +11,10 @@
 #define MaxLineNum 1000
 #define UP 72
 #define DOWN 80
-#define ADD 65
+#define APP 65 //append line
 #define DEL 68
 #define EDIT 69
-#define INSERT 73
+#define INS 73
 
 typedef struct command_box
 {
@@ -35,6 +35,7 @@ void print_line(int command_line, INFO* fi);
 int myFgets(char* buffer, int max, FILE* fp);
 int get_command(COMMAND* c);
 int move_line(const int num, const char sign, INFO* fi);
+void append_line(INFO* fi);
 
 int main(int argc, char* argv[])   
 {
@@ -67,18 +68,30 @@ int main(int argc, char* argv[])
 			fi.current_line = fi.total_line - 1;
 			print_line(fi.total_line, &fi);
 
-			while (get_command(&c))
+			while (1)
 			{
-				printf("\n");
-				switch (c.work)
+				if (!get_command(&c))
 				{
-					case'M':
+					//free(fi.text); 동적 할당된 메모리를 어떻게 release 할 건지 다시 생각해 볼 것.
+					break;
+				}
+				else
+				{
+					printf("\n");
+					switch (c.work)
 					{
-						convert_input = atoi(c.input);
-						move_line(convert_input, c.input[0], &fi);
-						//printf("\n");
-						//print_line(fi.current_line + 1, &fi);
-						break;
+						case'M':
+						{
+							convert_input = atoi(c.input);
+							move_line(convert_input, c.input[0], &fi);
+							break;
+						}
+
+						case 'A':
+						{
+							append_line(&fi);
+							break;
+						}
 					}
 				}
 			}
@@ -146,7 +159,8 @@ int view_file(FILE* fp, INFO* fi)
 	};
 	rewind(fp);
 	printf("\n");
-
+	//free(buffer);
+	//free(second_buffer);
 	fi->total_line = line_num - 1;
 
 	return line_num - 1;
@@ -228,15 +242,16 @@ int get_command(COMMAND* c)
 
 	printf("\n   > ");
 	
-	ch = _getche();
+	ch = _getch();
 
 	if (ch == 224) //If the user entered arrow keys
 	{
-		sc = _getche();
+		sc = _getch();
 		switch (sc)
 		{
 			case 72: //Up arrow key
 			{
+				printf("Up");
 				c->work = 'M';
 				strcpy(c->input, "-1");
 				break;
@@ -244,6 +259,7 @@ int get_command(COMMAND* c)
 
 			case 80: //Down arrow key
 			{
+				printf("Down");
 				c->work = 'M';
 				strcpy(c->input, "+1");
 				break;
@@ -251,6 +267,7 @@ int get_command(COMMAND* c)
 
 			case 73: //Page Up
 			{
+				printf("Pg Up");
 				c->work = 'M';
 				strcpy(c->input, "-25");
 				break;
@@ -258,6 +275,7 @@ int get_command(COMMAND* c)
 
 			case 81: //Page Down
 			{
+				printf("Pg Dn");
 				c->work = 'M';
 				strcpy(c->input, "+25");
 				break;
@@ -272,6 +290,8 @@ int get_command(COMMAND* c)
 	else if (isdigit(ch))
 	{
 		answer[0] = ch;
+		printf("%c", ch);
+
 		while (1)
 		{
 			sc = _getche();
@@ -297,6 +317,7 @@ int get_command(COMMAND* c)
 
 	else if (ch == 81 || ch == 113)
 	{
+		printf("%c", ch);
 		printf("\n   Quit Line Editior.\n");
 		return 0;
 	}
@@ -305,17 +326,30 @@ int get_command(COMMAND* c)
 	{
 		if (islower(ch))
 			ch = toupper(ch);
+		printf("%c", ch);
 
 		switch(ch)
 		{
-			case ADD:
+			case APP:
+			{
 				c->work = 'A';
+				break;
+			}
 			case DEL:
+			{
 				c->work = 'D';
+				break;
+			}
 			case EDIT:
+			{
 				c->work = 'E';
-			case INSERT:
+				break;
+			}
+			case INS:
+			{
 				c->work = 'I';
+				break;
+			}
 			default:
 				break;
 		}
@@ -362,21 +396,25 @@ int move_line(const int num, const char sign, INFO* fi)
 			else if(num == -25) //Page Up Key
 			{
 				tmp = fi->current_line;
-				fi->current_line = fi->current_line - 24;
-				if (fi->current_line + 1 >= 0)
+				if (tmp != 0)
 				{
-					for (i = fi->current_line + 1; i <= tmp + 1; i++)
-						print_line(i, fi);
+					fi->current_line = fi->current_line - 24;
+					if (fi->current_line + 1 >= 0)
+					{
+						for (i = fi->current_line + 1; i <= tmp + 1; i++)
+							print_line(i, fi);
+					}
+					else
+					{
+						fi->current_line = 0;
+						for (k = 1; k <= tmp + 1; k++)
+							print_line(k, fi);
+					}
+					break;
 				}
-				else
-				{
-					fi->current_line = 0;
-					for (k = 1; k <= tmp + 1; k++)
-					print_line(k, fi);
-				}
-				break;
 			}
 		}
+		print_line(1, fi);
 		printf("   This is the end of file.\n");
 		break;
 
@@ -395,25 +433,70 @@ int move_line(const int num, const char sign, INFO* fi)
 			else if (num == 25) //Page Down Key
 			{
 				tmp = fi->current_line;
-				fi->current_line = fi->current_line + 24;
-				if (fi->current_line + 1 < fi->total_line)
+				if (tmp != fi->total_line - 1)
 				{
-					for (i = tmp + 1; i <= fi->current_line + 1; i++)
-						print_line(i, fi);
+					fi->current_line = fi->current_line + 24;
+					if (fi->current_line + 1 <= fi->total_line)
+					{
+						for (i = tmp + 1; i <= fi->current_line + 1; i++)
+							print_line(i, fi);
+					}
+					else if (fi->current_line + 1 > fi->total_line)
+					{
+						fi->current_line = fi->total_line - 1;
+						for (k = tmp + 1; k <= fi->total_line; k++)
+							print_line(k, fi);
+					}
+					break;
 				}
-
-				else if (fi->current_line + 1 > fi->total_line)
-				{
-					fi->current_line = fi->total_line - 1;
-					for (k = tmp + 1; k <= fi->total_line; k++)
-						print_line(k, fi);
-				}
-				break;
 			}
 		}
+		print_line(fi->total_line, fi);
 		printf("   This is the end of file.\n");
 		break;
 	}
 	return 1;
 }
 
+void append_line(INFO* fi)
+{
+	int new_line;
+	int data_len;
+	char* tmp_buffer;
+	char* new_buffer;
+
+	new_line = fi->total_line + 1;
+	fi->total_line++;
+
+	printf("\n   Enter the new line. \n");
+	printf("\n%5d:", new_line);
+
+	new_buffer = (char*)malloc(MaxLenofLine * sizeof(char));
+
+    if (!new_buffer)
+    {
+	   printf("Additional memory allocation failed.");
+ 	   exit(1);
+    }
+
+    else
+    {
+	   gets_s(new_buffer, MaxLenofLine * sizeof(char));
+	   data_len = strlen(new_buffer);
+	    
+	   tmp_buffer = (char*)realloc(new_buffer, (sizeof(char) * data_len) + 1);
+	   if (tmp_buffer == NULL)
+	   {
+		  printf("Additional memory reallocation failed.");
+		  free(new_buffer);
+		  exit(1);
+	   }
+	   else
+	   {
+		  fi->text[new_line - 1] = tmp_buffer;
+	   }
+
+    }
+
+	fi->current_line = new_line - 1;
+}
