@@ -36,6 +36,7 @@ int myFgets(char* buffer, int max, FILE* fp);
 int get_command(COMMAND* c);
 int move_line(const int num, const char sign, INFO* fi);
 void append_line(INFO* fi);
+void save_file(FILE* fp, INFO* fi, int count);
 
 int main(int argc, char* argv[])   
 {
@@ -44,6 +45,8 @@ int main(int argc, char* argv[])
 	INFO fi;
 
 	int convert_input;
+	int append_count = 0;
+	char answer;
 
 	if (argc < 2)
 	{
@@ -54,7 +57,7 @@ int main(int argc, char* argv[])
 
 	else
 	{
-		file = fopen(argv[1], "r+");
+		file = fopen(argv[1], "a+");
 
 		if (file == NULL)
 		{
@@ -72,8 +75,34 @@ int main(int argc, char* argv[])
 			{
 				if (!get_command(&c))
 				{
-					//free(fi.text); 동적 할당된 메모리를 어떻게 release 할 건지 다시 생각해 볼 것.
-					break;
+					if (append_count != 0) //when there is(are) the line(s) that the user appended.
+					{
+						while (1)
+						{
+							printf("\n\n   Save your changes? (Y / N) ");
+							scanf("%c", &answer);
+
+							if (answer == 'Y' || answer == 'y')
+							{
+								save_file(file, &fi, append_count);
+								break;
+							}
+
+							else if (answer == 'N' || answer == 'n')
+							{
+								//free(fi.text); 동적 할당된 메모리를 어떻게 release 할 건지 다시 생각해 볼 것.
+								break;
+							}
+
+							else
+								printf("Invalid Command");
+						}
+						printf("\n   Quit Line Editior.\n");
+						fclose(file);
+						return 0;
+					}
+					else
+						break;
 				}
 				else
 				{
@@ -90,15 +119,22 @@ int main(int argc, char* argv[])
 						case 'A':
 						{
 							append_line(&fi);
+							++append_count;
+							break;
+						}
+						default:
+						{
+							printf("\n   Please enter the valid command.(Line Number / A / D / E / I / Up Arrow / Down Arrow / Pg Up / Pg Dn)\n");
 							break;
 						}
 					}
 				}
 			}
+			printf("\n   Quit Line Editior.\n");
+			fclose(file);
+			return 0;
 		}
 	}
-	fclose(file);
-	return 0;
 }
 
 int view_file(FILE* fp, INFO* fi)
@@ -126,7 +162,7 @@ int view_file(FILE* fp, INFO* fi)
 			{
 				if (line_num == 1)
 				{
-					printf("\n   Empty File.\n");
+					printf("\n\n   Empty File.\n");
 					exit(1);
 				}
 
@@ -318,7 +354,6 @@ int get_command(COMMAND* c)
 	else if (ch == 81 || ch == 113)
 	{
 		printf("%c", ch);
-		printf("\n   Quit Line Editior.\n");
 		return 0;
 	}
 
@@ -351,11 +386,15 @@ int get_command(COMMAND* c)
 				break;
 			}
 			default:
+			{
+				//printf("Enter the valid commmand. (A / D / E / I)");
 				break;
+			}
 		}
 		return 1;
 	}
 	printf("\n");
+	return 0;
 }
 
 int move_line(const int num, const char sign, INFO* fi)
@@ -499,4 +538,15 @@ void append_line(INFO* fi)
     }
 
 	fi->current_line = new_line - 1;
+}
+
+void save_file(FILE* fp, INFO* fi, int count)
+{
+	int append_count = count;
+
+	for (int i = count; i > 0; i--)
+	{
+		fputs(fi->text[fi->total_line - i], fp);
+		fputc('\n', fp);
+	}
 }
