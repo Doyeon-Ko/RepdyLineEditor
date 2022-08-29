@@ -11,10 +11,10 @@
 #define MaxLineNum 1000
 #define UP 72
 #define DOWN 80
-#define APP 65 //append line
-#define DEL 68
-#define EDIT 69
-#define INS 73
+#define APP 65 //append line at the bottom of file
+#define DEL 68 //delete line
+#define EDIT 69 //edit text
+#define INS 73 //insert line
 
 typedef struct command_box
 {
@@ -36,7 +36,8 @@ int myFgets(char* buffer, int max, FILE* fp);
 int get_command(COMMAND* c);
 int move_line(const int num, const char sign, INFO* fi);
 void append_line(INFO* fi);
-void save_file(FILE* fp, INFO* fi, int count);
+void insert_line(INFO* fi);
+void save_file(FILE* fp, INFO* fi);
 
 int main(int argc, char* argv[])   
 {
@@ -46,18 +47,19 @@ int main(int argc, char* argv[])
 
 	int convert_input;
 	int append_count = 0;
+	int insert_count = 0;
 	char answer;
 
 	if (argc < 2)
 	{
 		printf("인수의 개수가 부족합니다.\n 아래와 같이 입력하세요.\n");
-		printf("> 0704.exe <파일명> \n");
+		printf("> 0704.exe <filename> \n");
 		return 0; 
 	}
 
 	else
 	{
-		file = fopen(argv[1], "a+");
+		file = fopen(argv[1], "r+");
 
 		if (file == NULL)
 		{
@@ -75,7 +77,7 @@ int main(int argc, char* argv[])
 			{
 				if (!get_command(&c))
 				{
-					if (append_count != 0) //when there is(are) the line(s) that the user appended.
+					if (append_count != 0 || insert_count != 0) //when there is(are) the line(s) that the user appended or inserted.
 					{
 						while (1)
 						{
@@ -84,13 +86,13 @@ int main(int argc, char* argv[])
 
 							if (answer == 'Y' || answer == 'y')
 							{
-								save_file(file, &fi, append_count);
+								save_file(file, &fi);
 								break;
 							}
 
 							else if (answer == 'N' || answer == 'n')
 							{
-								//free(fi.text); 동적 할당된 메모리를 어떻게 release 할 건지 다시 생각해 볼 것.
+								//free(fi.text); Need to consider the memory release !
 								break;
 							}
 
@@ -122,6 +124,14 @@ int main(int argc, char* argv[])
 							++append_count;
 							break;
 						}
+
+						case 'I':
+						{
+							++insert_count;
+							insert_line(&fi);
+							break;
+						}
+
 						default:
 						{
 							printf("\n   Please enter the valid command.(Line Number / A / D / E / I / Up Arrow / Down Arrow / Pg Up / Pg Dn)\n");
@@ -404,7 +414,7 @@ int move_line(const int num, const char sign, INFO* fi)
 
 	switch (sign)
 	{
-		case'0': //num 번째 줄로 이동
+		case'0': //move to the specific line
 		{
 			if (0 < num && num <= fi->total_line)
 			{
@@ -420,7 +430,7 @@ int move_line(const int num, const char sign, INFO* fi)
 			}
 		}
 
-		case'-': //(current line - num) 번째 줄로 이동
+		case'-': //move to the (current line - num)th line
 		{
 			if (num == -1) //Up Arrow Key
 			{
@@ -457,7 +467,7 @@ int move_line(const int num, const char sign, INFO* fi)
 		printf("   This is the end of file.\n");
 		break;
 
-		case'+': //(current line + num) 번째 줄로 이동
+		case'+': //move to the (current line + num)th line
 		{
 			if (num == 1) //Down Arrow Key
 			{
@@ -534,19 +544,76 @@ void append_line(INFO* fi)
 	   {
 		  fi->text[new_line - 1] = tmp_buffer;
 	   }
-
     }
-
 	fi->current_line = new_line - 1;
 }
 
-void save_file(FILE* fp, INFO* fi, int count)
+void save_file(FILE* fp, INFO* fi)
 {
-	int append_count = count;
+	rewind(fp);
 
-	for (int i = count; i > 0; i--)
+	for (int k = 0; k < fi->total_line; k++)
 	{
-		fputs(fi->text[fi->total_line - i], fp);
-		fputc('\n', fp);
+		fputs(fi->text[k], fp);
+		fputs("\n", fp);
 	}
+}
+
+void insert_line(INFO* fi)
+{
+	int line_len;
+	int ins_line;
+	int ori_line = fi->total_line;
+	char ch;
+	char* last_line;
+
+	printf("\n   Line Number : ");
+	scanf("%d", &ins_line);
+	
+	last_line = (char*)malloc(MaxLenofLine * sizeof(char));
+	if (!last_line)
+	{
+		printf("New memory allocation for saving the last line of file failed.");
+		exit(1);
+	}
+
+	else
+	{
+		line_len = strlen(fi->text[ori_line - 1]);
+		strncpy(last_line, fi->text[ori_line - 1], line_len - 1);
+		last_line[line_len - 1] = '\0';
+		fi->text[ori_line] = last_line;
+	}
+
+	for (int k = 0; k < (fi->total_line - ins_line) + 1; k++)
+	{
+		line_len = strlen(fi->text[ori_line - 2]);
+		strncpy(fi->text[ori_line - 1], fi->text[ori_line - 2], line_len - 1);
+		fi->text[ori_line - 1][line_len - 1] = '\0';
+		--ori_line;
+	}
+
+	char* new_text = (char*)malloc(MaxLenofLine * sizeof(char));
+
+	if (!new_text)
+	{
+		printf("New memory allocation for insertion failed.");
+		exit(1);
+	}
+
+	ch = getchar(); //clean the buffer
+	printf("\n   Input new text : ");
+	gets_s(new_text, MaxLenofLine * sizeof(char));
+	strcpy(fi->text[ins_line - 1], new_text);
+
+	if (ins_line != 1)
+	{
+		for (int i = 0; i < ins_line - 1; i++)
+		{
+			line_len = strlen(fi->text[i]);
+			strncpy(fi->text[i], fi->text[i], line_len - 1);
+			fi->text[i][line_len - 1] = '\0';
+		}
+	}
+	++(fi->total_line);
 }
