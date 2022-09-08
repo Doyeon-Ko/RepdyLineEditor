@@ -29,7 +29,8 @@ typedef struct file_info
 	char* text[1000];
 }INFO;
 
-int view_file(FILE* fp, INFO* fi);
+void load_file(FILE* fp, INFO* fi);
+void view_file(FILE* fp, INFO* fi);
 void print_line(int command_line, INFO* fi);
 //int read_line(char* buffer, int num, FILE* fp);
 int myFgets(char* buffer, int max, FILE* fp);
@@ -69,9 +70,8 @@ int main(int argc, char* argv[])
 			
 		else
 		{
-			fi.total_line = view_file(file, &fi);
-			fi.current_line = fi.total_line - 1;
-			print_line(fi.total_line, &fi);
+			load_file(file, &fi);
+			view_file(file, &fi);
 
 			while (1)
 			{
@@ -147,7 +147,7 @@ int main(int argc, char* argv[])
 	}
 }
 
-int view_file(FILE* fp, INFO* fi)
+void load_file(FILE* fp, INFO* fi)
 {
 	char* buffer = NULL;
 	char* second_buffer = NULL;
@@ -155,14 +155,14 @@ int view_file(FILE* fp, INFO* fi)
 	int line_num = 1;
 	int ptr_num = 0;
 	int text_len = 0;
-	
-	while(line_num)	//while (read_line(buffer, MaxCount, fp) != NULL)
+
+	while (line_num)	//while (read_line(buffer, MaxCount, fp) != NULL)
 	{
 		buffer = (char*)malloc(MaxLenofLine * sizeof(char));
 
 		if (!buffer)
 		{
-			printf("Memory allocation failed.");
+			printf("Memory allocation for saving text file failed.");
 			exit(1);
 		}
 
@@ -190,36 +190,56 @@ int view_file(FILE* fp, INFO* fi)
 
 				if (second_buffer == NULL)
 				{
-					printf("Memory reallocation failed.");
+					printf("Memory reallocation for saving text file failed.");
 					free(buffer);
 					exit(1);
 				}
 
-				else 
+				else
 				{
-					fi->text[ptr_num] = second_buffer;
-					printf("%5d %s\n", line_num++, fi->text[ptr_num++]);
+					fi->text[ptr_num++] = second_buffer;
+					line_num++;
 				}
 			}
 		}
 	};
+
+	fi->total_line = line_num - 1;
+	fi->current_line = line_num - 1;
+
 	rewind(fp);
-	printf("\n");
 	//free(buffer);
 	//free(second_buffer);
-	fi->total_line = line_num - 1;
+}
 
-	return line_num - 1;
+void view_file(FILE* fp, INFO* fi)
+{
+	for (int i = 0; i < fi->total_line; i++)
+	{
+		print_line(i + 1, fi);
+	}
+
+	printf("\n");
+	print_line(fi->current_line, fi);
 }
 
 void print_line(const int command_line, INFO* fi)
 {
-	char arr[Max] = "";
+	int i;
 	int str_size = 0;
+	str_size = strlen(fi->text[command_line - 1]);
 
 	if (command_line > 0 && command_line <= fi->total_line)
 	{
-		printf("%5d:%s\n", command_line, fi->text[command_line - 1]);
+		printf("%5d ", command_line);
+		for (i = 0; fi->text[command_line - 1][i] != '\n'; i++)
+			printf("%c", fi->text[command_line - 1][i]);
+			
+		if (fi->text[command_line - 1][i] == '\n')
+		{
+			printf("`");
+			printf("\n");
+		}
 	}
 
 	else if (command_line < 0 || command_line > fi->total_line || command_line == 0 && (isdigit(command_line)) != 0)
@@ -267,7 +287,7 @@ int myFgets(char* buffer, int max, FILE* fp)
 
 		if (dat == '\n')
 		{
-			buffer[i] = '`';
+			buffer[i] = dat;
 			buffer[i + 1] = 0;
 			return i + 1;
 		}
@@ -367,7 +387,7 @@ int get_command(COMMAND* c)
 		return 0;
 	}
 
-	else if (isalpha(ch)) //사용자가 'A', 'E', 'D', 'I', 'a', 'e', 'd', 'i' 중에 한 명령어를 입력했을 경우
+	else if (isalpha(ch)) //When the user entered command('A', 'E', 'D', 'I', 'a', 'e', 'd', 'i' ).
 	{
 		if (islower(ch))
 			ch = toupper(ch);
@@ -531,9 +551,12 @@ void append_line(INFO* fi)
     else
     {
 	   gets_s(new_buffer, MaxLenofLine * sizeof(char));
+
 	   data_len = strlen(new_buffer);
-	    
-	   tmp_buffer = (char*)realloc(new_buffer, (sizeof(char) * data_len) + 1);
+	   new_buffer[data_len] = '\n';
+	   new_buffer[data_len + 1] = 0;
+
+	   tmp_buffer = (char*)realloc(new_buffer, (sizeof(char) * data_len) + 2);
 	   if (tmp_buffer == NULL)
 	   {
 		  printf("Additional memory reallocation failed.");
@@ -553,19 +576,16 @@ void save_file(FILE* fp, INFO* fi)
 	rewind(fp);
 
 	for (int k = 0; k < fi->total_line; k++)
-	{
 		fputs(fi->text[k], fp);
-		fputs("\n", fp);
-	}
 }
 
 void insert_line(INFO* fi)
 {
-	int line_len;
+	int data_len;
 	int ins_line;
 	int ori_line = fi->total_line;
 	char ch;
-	char* last_line;
+	char* last_line = NULL;
 
 	printf("\n   Line Number : ");
 	scanf("%d", &ins_line);
@@ -577,19 +597,12 @@ void insert_line(INFO* fi)
 		exit(1);
 	}
 
-	else
-	{
-		line_len = strlen(fi->text[ori_line - 1]);
-		strncpy(last_line, fi->text[ori_line - 1], line_len - 1);
-		last_line[line_len - 1] = '\0';
-		fi->text[ori_line] = last_line;
-	}
+	strcpy(last_line, fi->text[ori_line - 1]);
+	fi->text[ori_line] = last_line;
 
 	for (int k = 0; k < (fi->total_line - ins_line) + 1; k++)
 	{
-		line_len = strlen(fi->text[ori_line - 2]);
-		strncpy(fi->text[ori_line - 1], fi->text[ori_line - 2], line_len - 1);
-		fi->text[ori_line - 1][line_len - 1] = '\0';
+		fi->text[ori_line - 1] = fi->text[ori_line - 2];
 		--ori_line;
 	}
 
@@ -604,16 +617,12 @@ void insert_line(INFO* fi)
 	ch = getchar(); //clean the buffer
 	printf("\n   Input new text : ");
 	gets_s(new_text, MaxLenofLine * sizeof(char));
-	strcpy(fi->text[ins_line - 1], new_text);
 
-	if (ins_line != 1)
-	{
-		for (int i = 0; i < ins_line - 1; i++)
-		{
-			line_len = strlen(fi->text[i]);
-			strncpy(fi->text[i], fi->text[i], line_len - 1);
-			fi->text[i][line_len - 1] = '\0';
-		}
-	}
+	data_len = strlen(new_text);
+	new_text[data_len] = '\n';
+	new_text[data_len + 1] = 0;
+
+	fi->text[ins_line - 1] = new_text;
+
 	++(fi->total_line);
 }
