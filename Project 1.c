@@ -24,6 +24,7 @@ typedef struct command_box
 
 typedef struct file_info
 {
+	char file_name[100];
 	int current_line;
 	int total_line;
 	char* text[1000];
@@ -38,17 +39,21 @@ int get_command(COMMAND* c);
 int move_line(const int num, const char sign, INFO* fi);
 void append_line(INFO* fi);
 void insert_line(INFO* fi);
+void delete_line(INFO* fi);
 void save_file(FILE* fp, INFO* fi);
 
 int main(int argc, char* argv[])   
 {
-	FILE* file;
+	FILE* fpToRead;
 	COMMAND c;
 	INFO fi;
 
 	int convert_input;
+
 	int append_count = 0;
 	int insert_count = 0;
+	int delete_count = 0;
+
 	char answer;
 
 	if (argc < 2)
@@ -60,9 +65,10 @@ int main(int argc, char* argv[])
 
 	else
 	{
-		file = fopen(argv[1], "r+");
+		fpToRead = fopen(argv[1], "r+");
+		strcpy(fi.file_name, argv[1]);
 
-		if (file == NULL)
+		if (fpToRead == NULL)
 		{
 			printf("File does not exist.");
 			return 0;
@@ -70,14 +76,15 @@ int main(int argc, char* argv[])
 			
 		else
 		{
-			load_file(file, &fi);
-			view_file(file, &fi);
+			load_file(fpToRead, &fi);
+			view_file(fpToRead, &fi);
+			fclose(fpToRead);
 
 			while (1)
 			{
 				if (!get_command(&c))
 				{
-					if (append_count != 0 || insert_count != 0) //when there is(are) the line(s) that the user appended or inserted.
+					if (append_count != 0 || insert_count != 0 || delete_count != 0) //when there is(are) the line(s) that the user appended or inserted.
 					{
 						while (1)
 						{
@@ -86,7 +93,7 @@ int main(int argc, char* argv[])
 
 							if (answer == 'Y' || answer == 'y')
 							{
-								save_file(file, &fi);
+								save_file(fpToRead, &fi);
 								break;
 							}
 
@@ -100,7 +107,7 @@ int main(int argc, char* argv[])
 								printf("Invalid Command");
 						}
 						printf("\n   Quit Line Editior.\n");
-						fclose(file);
+						fclose(fpToRead);
 						return 0;
 					}
 					else
@@ -132,6 +139,12 @@ int main(int argc, char* argv[])
 							break;
 						}
 
+						case 'D':
+						{
+							++delete_count;
+							delete_line(&fi);
+							break;
+						}
 						default:
 						{
 							printf("\n   Please enter the valid command.(Line Number / A / D / E / I / Up Arrow / Down Arrow / Pg Up / Pg Dn)\n");
@@ -141,7 +154,7 @@ int main(int argc, char* argv[])
 				}
 			}
 			printf("\n   Quit Line Editior.\n");
-			fclose(file);
+			fclose(fpToRead);
 			return 0;
 		}
 	}
@@ -215,9 +228,7 @@ void load_file(FILE* fp, INFO* fi)
 void view_file(FILE* fp, INFO* fi)
 {
 	for (int i = 0; i < fi->total_line; i++)
-	{
 		print_line(i + 1, fi);
-	}
 
 	printf("\n");
 	print_line(fi->current_line, fi);
@@ -535,7 +546,7 @@ void append_line(INFO* fi)
 	char* new_buffer;
 
 	new_line = fi->total_line + 1;
-	fi->total_line++;
+	++fi->total_line;
 
 	printf("\n   Enter the new line. \n");
 	printf("\n%5d:", new_line);
@@ -569,14 +580,6 @@ void append_line(INFO* fi)
 	   }
     }
 	fi->current_line = new_line - 1;
-}
-
-void save_file(FILE* fp, INFO* fi)
-{
-	rewind(fp);
-
-	for (int k = 0; k < fi->total_line; k++)
-		fputs(fi->text[k], fp);
 }
 
 void insert_line(INFO* fi)
@@ -625,4 +628,35 @@ void insert_line(INFO* fi)
 	fi->text[ins_line - 1] = new_text;
 
 	++(fi->total_line);
+}
+
+void delete_line(INFO* fi)
+{
+	int del_line;
+	int k;
+	char ch;
+
+	printf("\n   Line Number : ");
+	scanf("%d", &del_line);
+	ch = getchar();
+
+	free(fi->text[del_line - 1]);
+
+	for (k = 0; k < fi->total_line - del_line; k++)
+	{
+		fi->text[(del_line - 1) + k] = fi->text[del_line + k];
+	}
+
+	fi->text[fi->total_line - 1] = NULL;
+	fi->current_line = del_line - 1;
+	--(fi->total_line);
+}
+
+void save_file(FILE* fp, INFO* fi)
+{
+	FILE* fpToWrite;
+	fpToWrite = fopen(fi->file_name, "w+");
+
+	for (int k = 0; k < fi->total_line; k++)
+		fputs(fi->text[k], fpToWrite);
 }
