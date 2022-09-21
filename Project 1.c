@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <conio.h>
+#include <Windows.h>
 
 #define MaxLenofLine 10000
 #define Max 1000
@@ -40,6 +41,8 @@ int move_line(const int num, const char sign, INFO* fi);
 void append_line(INFO* fi);
 void insert_line(INFO* fi);
 void delete_line(INFO* fi);
+void gotoxy(int x, int y);
+int edit_line(INFO* fi);
 void save_file(FILE* fp, INFO* fi);
 
 int main(int argc, char* argv[])   
@@ -53,6 +56,7 @@ int main(int argc, char* argv[])
 	int append_count = 0;
 	int insert_count = 0;
 	int delete_count = 0;
+	int edit_count = 0;
 
 	char answer;
 
@@ -84,7 +88,7 @@ int main(int argc, char* argv[])
 			{
 				if (!get_command(&c))
 				{
-					if (append_count != 0 || insert_count != 0 || delete_count != 0) //when there is(are) the line(s) that the user appended or inserted.
+					if (append_count != 0 || insert_count != 0 || delete_count != 0 || edit_count != 0) //when there is(are) the line(s) that the user appended or inserted.
 					{
 						while (1)
 						{
@@ -145,6 +149,14 @@ int main(int argc, char* argv[])
 							delete_line(&fi);
 							break;
 						}
+
+						case 'E':
+						{
+							++edit_count;
+							edit_line(&fi);
+							break;
+						}
+
 						default:
 						{
 							printf("\n   Please enter the valid command.(Line Number / A / D / E / I / Up Arrow / Down Arrow / Pg Up / Pg Dn)\n");
@@ -650,6 +662,72 @@ void delete_line(INFO* fi)
 	fi->text[fi->total_line - 1] = NULL;
 	fi->current_line = del_line - 1;
 	--(fi->total_line);
+}
+
+void gotoxy(int x, int y)
+{
+	COORD pos;
+	pos.X = x;
+	pos.Y = y;
+	SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), pos); //커서 위치 이동 함수
+}
+
+int edit_line(INFO* fi) //SetConsoleCursorPosition() ftn 활용해볼 것.
+{
+	int edit_line;
+	int i = 0;
+	unsigned char ch;
+	char sc;
+
+	CONSOLE_SCREEN_BUFFER_INFO curInfo; 
+
+	printf("\n   Line Number : ");
+	scanf("%d", &edit_line);
+
+	print_line(edit_line, fi);
+	GetConsoleScreenBufferInfo(GetStdHandle, &curInfo); //현재 콘솔창의 커서 좌표 알아내는 함수
+
+	gotoxy(curInfo.dwCursorPosition.X, curInfo.dwCursorPosition.Y);
+
+	while (1) 
+	{
+		ch = _getch();
+
+		if (ch == 224)
+		{
+			sc = _getch();
+			switch (sc)
+			{
+				case 75: //left arrow
+				{
+					curInfo.dwCursorPosition.X--;
+					break;
+				}
+				case 77: //right arrow
+				{
+					curInfo.dwCursorPosition.X++;
+					break;
+				}
+				case 79 : //enter end
+					return 0;
+				default:
+				{
+					printf("You can only enter left / right arrow key.");
+					break;
+				}
+			}
+		}
+
+		/*else if (ch == 8) //Backspace
+		{
+			printf("\b");
+			printf(" ");
+			printf("\b");
+			fi->text[edit_line - 1][]
+		}
+
+		else if (ch)*/
+	}
 }
 
 void save_file(FILE* fp, INFO* fi)
