@@ -12,10 +12,13 @@
 #define MaxLineNum 1000
 #define UP 72
 #define DOWN 80
+#define LEFT 75
+#define RIGHT 77
 #define APP 65 //append line at the bottom of file
 #define DEL 68 //delete line
 #define EDIT 69 //edit text
 #define INS 73 //insert line
+#define END 79 //end editing
 
 typedef struct command_box
 {
@@ -29,6 +32,8 @@ typedef struct file_info
 	int current_line;
 	int total_line;
 	char* text[1000];
+	int edited_num[MaxLineNum];//몇 번째 줄을 편집했는지 기억하는 공간
+	char* edited_line[MaxLineNum]; //편집한 새로운 line의 주소를 기억하는 공간
 }INFO;
 
 void load_file(FILE* fp, INFO* fi);
@@ -42,7 +47,7 @@ void append_line(INFO* fi);
 void insert_line(INFO* fi);
 void delete_line(INFO* fi);
 void gotoxy(int x, int y);
-int edit_line(INFO* fi);
+void edit_line(INFO* fi, FILE* fp);
 void save_file(FILE* fp, INFO* fi);
 
 int main(int argc, char* argv[])   
@@ -69,7 +74,7 @@ int main(int argc, char* argv[])
 
 	else
 	{
-		fpToRead = fopen(argv[1], "r+");
+		fpToRead = fopen("TheVeryFirstNight.txt", "r+");
 		strcpy(fi.file_name, argv[1]);
 
 		if (fpToRead == NULL)
@@ -90,6 +95,7 @@ int main(int argc, char* argv[])
 				{
 					if (append_count != 0 || insert_count != 0 || delete_count != 0 || edit_count != 0) //when there is(are) the line(s) that the user appended or inserted.
 					{
+						getchar();
 						while (1)
 						{
 							printf("\n\n   Save your changes? (Y / N) ");
@@ -97,6 +103,14 @@ int main(int argc, char* argv[])
 
 							if (answer == 'Y' || answer == 'y')
 							{
+								if (edit_count > 0)
+								{
+									for (int i = 0; i < edit_count; i++)
+									{
+										free(fi.text[fi.edited_num[i] - 1]);
+										fi.text[fi.edited_num[i] - 1] = fi.edited_line[i];
+									}
+								}
 								save_file(fpToRead, &fi);
 								break;
 							}
@@ -153,7 +167,7 @@ int main(int argc, char* argv[])
 						case 'E':
 						{
 							++edit_count;
-							edit_line(&fi);
+							edit_line(&fi, fpToRead);
 							break;
 						}
 
@@ -240,10 +254,14 @@ void load_file(FILE* fp, INFO* fi)
 void view_file(FILE* fp, INFO* fi)
 {
 	for (int i = 0; i < fi->total_line; i++)
+	{
 		print_line(i + 1, fi);
+		printf("\n");
+	}
 
 	printf("\n");
 	print_line(fi->current_line, fi);
+	printf("\n");
 }
 
 void print_line(const int command_line, INFO* fi)
@@ -261,7 +279,7 @@ void print_line(const int command_line, INFO* fi)
 		if (fi->text[command_line - 1][i] == '\n')
 		{
 			printf("`");
-			printf("\n");
+			//printf("\n");
 		}
 	}
 
@@ -463,6 +481,7 @@ int move_line(const int num, const char sign, INFO* fi)
 			{
 				fi->current_line = num - 1;
 				print_line(num, fi);
+				printf("\n");
 				break;
 			}
 			else
@@ -481,6 +500,7 @@ int move_line(const int num, const char sign, INFO* fi)
 				{
 					fi->current_line = fi->current_line - 1;
 					print_line(fi->current_line + 1, fi);
+					printf("\n");
 					break;
 				}
 			}
@@ -494,20 +514,27 @@ int move_line(const int num, const char sign, INFO* fi)
 					if (fi->current_line + 1 >= 0)
 					{
 						for (i = fi->current_line + 1; i <= tmp + 1; i++)
+						{
 							print_line(i, fi);
+							printf("\n");
+						}
+							
 					}
 					else
 					{
 						fi->current_line = 0;
 						for (k = 1; k <= tmp + 1; k++)
+						{
 							print_line(k, fi);
+							printf("\n");
+						}
 					}
 					break;
 				}
 			}
 		}
 		print_line(1, fi);
-		printf("   This is the end of file.\n");
+		printf("\n   This is the end of file.\n");
 		break;
 
 		case'+': //move to the (current line + num)th line
@@ -518,6 +545,7 @@ int move_line(const int num, const char sign, INFO* fi)
 				{
 					fi->current_line = fi->current_line + 1;
 					print_line(fi->current_line + 1, fi);
+					printf("\n");
 					break;
 				}
 			}
@@ -531,20 +559,26 @@ int move_line(const int num, const char sign, INFO* fi)
 					if (fi->current_line + 1 <= fi->total_line)
 					{
 						for (i = tmp + 1; i <= fi->current_line + 1; i++)
+						{
 							print_line(i, fi);
+							printf("\n");
+						}
 					}
 					else if (fi->current_line + 1 > fi->total_line)
 					{
 						fi->current_line = fi->total_line - 1;
 						for (k = tmp + 1; k <= fi->total_line; k++)
+						{
 							print_line(k, fi);
+							printf("\n");
+						}
 					}
 					break;
 				}
 			}
 		}
 		print_line(fi->total_line, fi);
-		printf("   This is the end of file.\n");
+		printf("\n   This is the end of file.\n");
 		break;
 	}
 	return 1;
@@ -666,67 +700,98 @@ void delete_line(INFO* fi)
 
 void gotoxy(int x, int y)
 {
+	HANDLE handle = GetStdHandle(STD_OUTPUT_HANDLE);
 	COORD pos;
 	pos.X = x;
 	pos.Y = y;
-	SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), pos); //커서 위치 이동 함수
+	SetConsoleCursorPosition(handle, pos); //커서 위치 이동 함수
 }
 
-int edit_line(INFO* fi) //SetConsoleCursorPosition() ftn 활용해볼 것.
+void edit_line(INFO* fi, FILE* fp)
 {
+	static int e = 0;
 	int edit_line;
-	int i = 0;
+	static int m = 0;
 	unsigned char ch;
 	char sc;
+	char* edited_line; //편집된 text를 담을 배열. 사용자가 변경된 내용을 저장하고자 하면 return된 이 배열을 사용하고, 저장을 원치 않을 땐 활용하지 않는다.
 
+	edited_line = (char*)malloc(MaxLenofLine * sizeof(char));
 	CONSOLE_SCREEN_BUFFER_INFO curInfo; 
 
 	printf("\n   Line Number : ");
 	scanf("%d", &edit_line);
+	fi->edited_num[m++] = edit_line; //m : 편집한 줄의 개수
 
-	print_line(edit_line, fi);
-	GetConsoleScreenBufferInfo(GetStdHandle, &curInfo); //현재 콘솔창의 커서 좌표 알아내는 함수
-
-	gotoxy(curInfo.dwCursorPosition.X, curInfo.dwCursorPosition.Y);
-
-	while (1) 
+	if (edited_line)
 	{
-		ch = _getch();
+		strcpy(edited_line, fi->text[edit_line - 1]);
 
-		if (ch == 224)
+		printf("\n");
+
+		print_line(edit_line, fi);
+		GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &curInfo); //현재 콘솔창의 커서 좌표 알아내는 함수
+
+		int x = curInfo.dwCursorPosition.X;
+		int y = curInfo.dwCursorPosition.Y;
+
+		gotoxy(x, y);
+
+		while (1)
 		{
-			sc = _getch();
-			switch (sc)
+			ch = _getch();
+
+			if (ch == 224)
 			{
-				case 75: //left arrow
+				sc = _getch();
+				switch (sc)
 				{
-					curInfo.dwCursorPosition.X--;
-					break;
+					case LEFT: //left arrow
+					{
+						gotoxy(--x, y);
+						break;
+					}
+					case RIGHT: //right arrow
+					{
+						gotoxy(++x, y);
+						break;
+					}
+					case END: //enter end
+					{
+						printf("\n");
+						fi->edited_line[e++] = edited_line;
+						return 0;
+					}
+					default:
+					{
+						printf("You can only enter left / right arrow key.");
+						break;
+					}
 				}
-				case 77: //right arrow
+			}
+
+			if (ch == 8) //If the user entered the backspace
+			{
+				printf("\b"); //커서 위치가 좌로 한 칸 이동함. 근데 그 한 칸 내용이 지워지진 않음.
+				printf(" "); //커서 위치를 변경한 후 해당 칸에 공백을 출력해 지워진 것처럼 보이게 함.
+				printf("\b"); //공백을 출력한 후에 다시 한 칸 밀려난 커서를 왼쪽으로 한 칸 이동시킴.
+				if (x - 7 >= 0)
 				{
-					curInfo.dwCursorPosition.X++;
-					break;
+					edited_line[x - 7] = ' ';
+					--x;
 				}
-				case 79 : //enter end
-					return 0;
-				default:
+			}
+
+			else if (isalpha(ch))
+			{
+				printf("%c", ch);
+				if (x - 6 >= 0)
 				{
-					printf("You can only enter left / right arrow key.");
-					break;
+					edited_line[x - 6] = ch;
+					x++;
 				}
 			}
 		}
-
-		/*else if (ch == 8) //Backspace
-		{
-			printf("\b");
-			printf(" ");
-			printf("\b");
-			fi->text[edit_line - 1][]
-		}
-
-		else if (ch)*/
 	}
 }
 
